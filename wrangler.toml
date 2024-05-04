@@ -5,14 +5,19 @@ compatibility_date = "2024-05-02"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 
+# custom domain to run the project on
 [[routes]]
 pattern = "example.com"
 custom_domain = true
 
 [vars]
+# where the R2 bucket is publicly exposed
 BUCKET_HOST = "https://images.example.com"
 BUCKET_PREFIX = ""
+# how long to show each image for
+DELAY_MS = 5000
 
 [[r2_buckets]]
 binding = "IMAGES"
+# name of the R2 bucket
 bucket_name = "images"

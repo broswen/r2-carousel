@@ -1,6 +1,6 @@
 
-const carouselHTML: string =
-`
+function carouselHTML(delay: number): string {
+	return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,19 +43,20 @@ const carouselHTML: string =
 			setInterval(() => {
 				index = (index + 1) % urls.length;
 				image.setAttribute("src", urls[index]);
-			}, 5000);
+			}, ${delay});
 		});
 
 	</script>
 </body>
 </html>
 `;
+}
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		if (url.pathname === "/") {
-			return new Response(carouselHTML, {
+			return new Response(carouselHTML(env.DELAY_MS), {
 				headers: {
 					"Content-Type": "text/html"
 				}
