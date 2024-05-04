@@ -1,6 +1,6 @@
 
-function carouselHTML(url: string): string {
-return `
+const carouselHTML: string =
+`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,33 +28,57 @@ return `
 		max-height: 100vh;
 		/*margin-left: auto;*/
 	}
-</style
+</style>
 </head>
 <body>
-	<img src="${url}" alt="image">
+	<img id="image" src="" alt="image">
 	<script>
-		setTimeout(() => location.reload(), 5000);
+		let image = document.getElementById("image");
+		let urls = fetch("/images")
+		.then((res) => res.json())
+		.then((urls) => {
+			if (urls.length === 0) return;
+			let index = Math.floor(Math.random() * urls.length);
+			image.setAttribute("src", urls[index]);
+			setInterval(() => {
+				index = (index + 1) % urls.length;
+				image.setAttribute("src", urls[index]);
+			}, 5000);
+		});
+
 	</script>
 </body>
 </html>
-`
-}
+`;
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		let cache = caches.default;
-		// TODO paginate truncated response
-		let images = await env.IMAGES.list({
-			limit: 1000,
-			prefix: env.BUCKET_PREFIX
-		});
-		// TODO cache url list for a few minutes
-		let urls = images.objects.map(image => `${env.BUCKET_HOST}/${image.key}`);
-		let url = urls[Math.floor(Math.random() * urls.length)];
-		return new Response(carouselHTML(url), {
-			headers: {
-				"Content-Type": "text/html"
+		const url = new URL(request.url);
+		if (url.pathname === "/") {
+			return new Response(carouselHTML, {
+				headers: {
+					"Content-Type": "text/html"
+				}
+			});
+		} else if (url.pathname === "/images") {
+			// check for cached response and return it
+			let cache = await caches.open("r2-carousel");
+			let res = await cache.match("https://localhost/images");
+			if (res) {
+				return res;
 			}
-		});
+
+			// query R2 and cache the response if it doesn't exist
+			let images = await env.IMAGES.list({
+				limit: 1000,
+				prefix: env.BUCKET_PREFIX
+			});
+			let urls = images.objects.map(image => `${env.BUCKET_HOST}/${image.key}`);
+			res = Response.json(urls);
+			res?.headers.append("Cache-Control", "s-maxage=60");
+			ctx.waitUntil(cache.put("https://localhost/images", res?.clone()))
+			return res;
+		}
+		return new Response("not found", {status: 404});
 	},
 };
