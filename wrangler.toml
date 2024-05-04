@@ -1,0 +1,18 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "r2-carousel"
+main = "src/index.ts"
+compatibility_date = "2024-05-02"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[[routes]]
+pattern = "example.com"
+custom_domain = true
+
+[vars]
+BUCKET_HOST = "https://images.example.com"
+BUCKET_PREFIX = ""
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "images"
