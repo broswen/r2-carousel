@@ -48,17 +48,24 @@ function carouselHTML(urls: string[], delay: number = 5000): string {
 			slides[index].classList.add("visible");
 
 			setInterval(() => {
-
+				let next = (index + 1) % slides.length;
+				// start fading out current slide
 				slides[index].classList.remove("visible");
+				// start loading next slide
+				slides[next].classList.remove("hidden");
 				let temp = index;
 				// delay display: none so transitions are visible
 				setTimeout(() => {
+					// hide current slide
 					slides[temp].classList.add("hidden");
 				}, 300);
-				index = (index + 1) % slides.length;
-				slides[index].classList.remove("hidden");
-				slides[index].classList.add("visible");
-			}, ${delay});
+				setTimeout(() => {
+					// start fading in next slide
+					slides[next].classList.add("visible");
+				}, 300)
+				index = next;
+			// 	add 600ms for transition 0.3s fade in and out
+			}, ${delay+600});
 		}
 	</script>
 </body>
