@@ -1,5 +1,5 @@
 
-function carouselHTML(delay: number): string {
+function carouselHTML(urls: string[], delay: number = 5000): string {
 	return `
 <!DOCTYPE html>
 <html lang="en">
@@ -16,70 +16,97 @@ function carouselHTML(delay: number): string {
 	}
 	body {
 		background-color: black;
-		display: flex;
-    justify-content: center;
-    align-items: center;
 	}
-	img {
-	  flex-shrink: 0;
-    /*min-width: 100%;*/
-    /*min-height: 100%*/
-		max-width: 100%;
-		max-height: 100vh;
-		/*margin-left: auto;*/
+	.slide {
+		opacity: 0;
+		background-size: contain;
+		background-repeat: no-repeat;
+		background-position: center;
+		width: 100%;
+		height: 100%;
+		position: fixed;
+		top: 0;
+		left: 0;
+		transition: opacity 0.3s;
+	}
+	.visible {
+		opacity: 1;
+	}
+	.hidden {
+		display: none;
 	}
 </style>
 </head>
 <body>
-	<img id="image" src="" alt="image">
+	${generateSlides(urls)}
 	<script>
-		let image = document.getElementById("image");
-		let urls = fetch("/images")
-		.then((res) => res.json())
-		.then((urls) => {
-			if (urls.length === 0) return;
-			let index = Math.floor(Math.random() * urls.length);
-			image.setAttribute("src", urls[index]);
-			setInterval(() => {
-				index = (index + 1) % urls.length;
-				image.setAttribute("src", urls[index]);
-			}, ${delay});
-		});
+		let slides = document.getElementsByClassName("slide");
+		if (slides.length !== 0) {
+			let index = Math.floor(Math.random() * slides.length);
+			// immediately show first slide
+			slides[index].classList.remove("hidden");
+			slides[index].classList.add("visible");
 
+			setInterval(() => {
+
+				slides[index].classList.remove("visible");
+				let temp = index;
+				// delay display: none so transitions are visible
+				setTimeout(() => {
+					slides[temp].classList.add("hidden");
+				}, 300);
+				index = (index + 1) % slides.length;
+				slides[index].classList.remove("hidden");
+				slides[index].classList.add("visible");
+			}, ${delay});
+		}
 	</script>
 </body>
 </html>
 `;
 }
 
+function generateSlides(urls: string[]): string {
+	let slides = "";
+	for (let url of urls) {
+		slides += `<div class="slide hidden" style="background-image: url('${url}');"></div>\n`
+	}
+	return slides;
+}
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
 		if (url.pathname === "/") {
-			return new Response(carouselHTML(env.DELAY_MS), {
+			let urls = await getUrls(env, ctx);
+			return new Response(carouselHTML(urls, env.DELAY_MS), {
 				headers: {
 					"Content-Type": "text/html"
 				}
 			});
 		} else if (url.pathname === "/images") {
 			// check for cached response and return it
-			let cache = await caches.open("r2-carousel");
-			let res = await cache.match("https://localhost/images");
-			if (res) {
-				return res;
-			}
-
-			// query R2 and cache the response if it doesn't exist
-			let images = await env.IMAGES.list({
-				limit: 1000,
-				prefix: env.BUCKET_PREFIX
-			});
-			let urls = images.objects.map(image => `${env.BUCKET_HOST}/${image.key}`);
-			res = Response.json(urls);
-			res?.headers.append("Cache-Control", "s-maxage=60");
-			ctx.waitUntil(cache.put("https://localhost/images", res?.clone()))
-			return res;
+			return Response.json(await getUrls(env, ctx));
 		}
 		return new Response("not found", {status: 404});
 	},
 };
+
+async function getUrls(env: Env, ctx: ExecutionContext): Promise<string[]> {
+	let cache = await caches.open("r2-carousel");
+	let res = await cache.match("https://localhost/images");
+	if (res) {
+		return res.json<string[]>();
+	}
+
+	// query R2 and cache the response if it doesn't exist
+	let images = await env.IMAGES.list({
+		limit: 1000,
+		prefix: env.BUCKET_PREFIX
+	});
+	let urls = images.objects.map(image => `${env.BUCKET_HOST}/${image.key}`);
+	res = Response.json(urls);
+	res?.headers.append("Cache-Control", "s-maxage=60");
+	ctx.waitUntil(cache.put("https://localhost/images", res?.clone()))
+	return urls;
+}
