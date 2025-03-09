@@ -8,6 +8,9 @@ function carouselHTML(urls: string[], delay: number = 5000): string {
 <meta charset="utf-8">
 <meta http-equiv="x-ua-compatible" content="ie=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Junge&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 <title>Carousel</title>
 <style>
 	* {
@@ -35,11 +38,53 @@ function carouselHTML(urls: string[], delay: number = 5000): string {
 	.hidden {
 		display: none;
 	}
+	.timer {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		color: white;
+		font-family: cursive;
+		font-size: xxx-large;
+		margin-top: 2rem;
+		text-align: center;
+		text-shadow: 0 0 4px black;
+	}
+
+	.junge-regular {
+  font-family: "Junge", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
 </style>
 </head>
 <body>
 	${generateSlides(urls)}
+	<div id="timer" class="timer junge-regular"></div>
 	<script>
+		const _second = 1000;
+    const _minute = _second * 60;
+    const _hour = _minute * 60;
+    const _day = _hour * 24;
+		const end = new Date("2025-08-09T05:00:00Z");
+
+		let updateTimer = () => {
+			let diff = end - new Date();
+			let timer = document.getElementById("timer");
+			let days = Math.floor(diff / _day);
+    	let hours = Math.floor((diff % _day) / _hour);
+    	timer.innerHTML = "";
+			timer.innerHTML += days + " days ";
+			timer.innerHTML += hours + " hours";
+		}
+
+		updateTimer();
+
+		setInterval(() => {
+			updateTimer();
+		}, 1000 * 60 * 30);
+
 		let slides = document.getElementsByClassName("slide");
 		if (slides.length !== 0) {
 			let index = Math.floor(Math.random() * slides.length);
@@ -48,6 +93,7 @@ function carouselHTML(urls: string[], delay: number = 5000): string {
 			slides[index].classList.add("visible");
 
 			setInterval(() => {
+				console.log("running")
 				let next = (index + 1) % slides.length;
 				// start fading out current slide
 				slides[index].classList.remove("visible");
@@ -115,5 +161,6 @@ async function getUrls(env: Env, ctx: ExecutionContext): Promise<string[]> {
 	res = Response.json(urls);
 	res?.headers.append("Cache-Control", "s-maxage=60");
 	ctx.waitUntil(cache.put("https://localhost/images", res?.clone()))
+	console.log({urls})
 	return urls;
 }
